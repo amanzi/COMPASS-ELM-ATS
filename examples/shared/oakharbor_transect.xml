@@ -142,6 +142,14 @@
     <Parameter name="start time units" type="string" value="s"/>
     <Parameter name="end time" type="double" value="2.0"/>
     <Parameter name="end time units" type="string" value="d"/>
+    <!-- Read only when run through the ELM coupling (ELM_ATSDriver); ignored by
+         standalone `ats`.  When "elm mass balance tolerance [mm]" > 0, each inner
+         ATS step is rejected (and dt reduced) unless every column's ELM water
+         balance error errh2o is within tolerance.  ELM's own fatal threshold is
+         1e-4 mm; set <= 0 to disable the gate. -->
+    <ParameterList name="ELM driver" type="ParameterList">
+      <Parameter name="elm mass balance tolerance [mm]" type="double" value="1.0e-4"/>
+    </ParameterList>
 
     <ParameterList name="PK tree" type="ParameterList">
       <ParameterList name="Top level MPC" type="ParameterList">
@@ -200,7 +208,7 @@
         <Parameter name="iterative method" type="string" value="gmres"/>
         <ParameterList name="gmres parameters" type="ParameterList">
           <Parameter name="preconditioning strategy" type="string" value="left"/>
-          <Parameter name="error tolerance" type="double" value="1e-12"/>
+          <Parameter name="error tolerance" type="double" value="1e-8"/>
           <Parameter name="convergence criteria" type="Array(string)" value="{relative residual, make one iteration}"/>
         </ParameterList>
       </ParameterList>
