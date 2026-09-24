@@ -42,6 +42,27 @@ echo " - global hash      $ATS_GIT_GLOBAL_HASH"
 echo " - version string   $ATS_VER"
 echo ""
 
-docker build --pull --progress=plain --no-cache -f Dockerfile-ATS-ELM -t metsi/ats:elm_api ../
+# Set REBUILD_ATS=true to rebuild ATS inside the container from the local
+# amanzi/ + amanzi/src/physics/ats/ working tree rather than using the ATS
+# prebuilt in the base image. Tune parallelism with ATS_BUILD_PARALLEL.
+REBUILD_ATS=${REBUILD_ATS:-false}
+ATS_BUILD_PARALLEL=${ATS_BUILD_PARALLEL:-4}
+ATS_BUILD_TYPE=${ATS_BUILD_TYPE:-opt}
+
+if [ "${REBUILD_ATS}" = "true" ]; then
+  echo "REBUILD_ATS=true: rebuilding ATS from local source"
+  echo " - amanzi at $AMANZI_GIT_GLOBAL_HASH, ats at $ATS_GIT_GLOBAL_HASH"
+  echo " - build type:        $ATS_BUILD_TYPE"
+  echo " - build parallelism: $ATS_BUILD_PARALLEL"
+  echo ""
+fi
+
+docker build --pull --progress=plain --no-cache \
+  --build-arg REBUILD_ATS="${REBUILD_ATS}" \
+  --build-arg ATS_BUILD_PARALLEL="${ATS_BUILD_PARALLEL}" \
+  --build-arg ATS_BUILD_TYPE="${ATS_BUILD_TYPE}" \
+  --build-arg AMANZI_GIT_HASH="${AMANZI_GIT_GLOBAL_HASH}" \
+  --build-arg ATS_GIT_HASH="${ATS_GIT_GLOBAL_HASH}" \
+  -f Dockerfile-ATS-ELM -t metsi/ats:elm_api ../
 
 

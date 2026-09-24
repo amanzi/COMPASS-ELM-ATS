@@ -90,12 +90,41 @@ ELM inputdata repo.
 ## Docker
 ~~The image created by CI works now! So: `docker run -it metsi/compass-elm-ats:latest` and then can follow the general workflow in the ci.yml file to setup and build the case.~~ 
 
-Steps if using docker but not the CI image (e.g., Apple Silicon).  Note that this uses the CI-built ATS, so if you change ATS, that must get pushed to e.g. elm_ats branch and rebuilt there.
+Steps if using docker but not the CI image (e.g., Apple Silicon).  By default this uses the CI-built ATS, so if you change ATS, either push it to e.g. the elm_ats branch and rebuild there, or rebuild ATS in the container from your local source with `REBUILD_ATS=true` (see below).
 
 1) Build the docker container:
 ```
-docker build --pull --progress=plain --no-cache -f Docker/Dockerfile-ATS-ELM-DEV -t metsi/ats:elm_api .
+docker build --pull --progress=plain --no-cache -f Docker/Dockerfile-ATS-ELM -t metsi/ats:elm_api .
 ```
+
+### Rebuilding ATS from local source
+
+By default both `Docker/Dockerfile-ATS-ELM` and `Docker/Dockerfile-run` use the
+ATS already compiled into the base image. To instead compile ATS from whatever
+is currently checked out in `amanzi/` and `amanzi/src/physics/ats/` -- including
+uncommitted changes -- pass `REBUILD_ATS=true`:
+
+```
+# via the deploy script
+REBUILD_ATS=true ./Docker/deploy-ats-elm-docker.sh
+
+# or directly
+docker build --build-arg REBUILD_ATS=true -f Docker/Dockerfile-ATS-ELM -t metsi/ats:elm_api .
+
+# or for the self-contained run image
+REBUILD_ATS=true ./examples/run_all_cases.sh
+```
+
+The rebuild reuses the base image's prebuilt TPLs, so only Amanzi/ATS is
+recompiled (~10 min). Tune parallelism with `ATS_BUILD_PARALLEL` (default 4) and
+the build type with `ATS_BUILD_TYPE` (`opt`, `debug`, `relwithdebinfo`).
+
+The resulting image records provenance in its labels:
+```
+docker inspect metsi/ats:elm_api --format '{{json .Config.Labels}}'
+```
+Because `amanzi/.git` is kept out of the build context, `ats --version` reports a
+static version rather than the commit hash; use the labels above instead.
 
 2) Then, from the top level repo directory: 
 ```

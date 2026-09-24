@@ -1,10 +1,26 @@
+# syntax=docker/dockerfile:1
 # Self-contained image for running COMPASS-ELM-ATS cases.
 # Starts from the base ATS image (pre-compiled ATS/Amanzi), adds CIME
 # dependencies, and copies the full source tree including E3SM and inputdata.
+#
+# Optionally rebuilds ATS from the local working-tree state of amanzi/ and
+# amanzi/src/physics/ats/ instead of using the ATS prebuilt in the base image:
+#
+#   docker build --build-arg REBUILD_ATS=true -f Docker/Dockerfile-run ...
+#
+# or via:  REBUILD_ATS=true ./examples/run_all_cases.sh
+#
+# The rebuild reuses the base image's prebuilt TPLs (--tpl-config-file), so it
+# recompiles only Amanzi/ATS, not the third-party stack.
 
-#FROM metsi/ats:elm_ats-latest
+#ARG base_image=metsi/ats:elm_ats-latest
+ARG base_image=metsi/ats:elm_ats-arm64-latest
 
-FROM metsi/ats:elm_ats-arm64-latest
+# REBUILD_ATS selects which of the two stages below becomes `final`.
+# Must be declared pre-FROM so it is usable in a FROM line.
+ARG REBUILD_ATS=false
+
+FROM ${base_image} AS base
 
 ARG https_proxy=
 ARG http_proxy=
@@ -30,7 +46,90 @@ RUN apt-get -q update -y && apt-get install -y \
 USER amanzi_user
 WORKDIR /home/amanzi_user
 
-# fix the Amanzi installation
+
+# ---------------------------------------------------------------------------
+# REBUILD_ATS=false (default): keep the ATS that the base image shipped.
+# ---------------------------------------------------------------------------
+FROM base AS ats-rebuild-false
+
+
+# ---------------------------------------------------------------------------
+# REBUILD_ATS=true: rebuild ATS from the local source tree.
+#
+# --ats_dev is essential: it tells bootstrap.sh NOT to clone/fetch the ATS
+# submodule (bootstrap.sh:1991), so the build uses exactly the source copied
+# in below -- i.e. the local commit, including uncommitted changes.
+# ---------------------------------------------------------------------------
+FROM base AS ats-rebuild-true
+
+ARG https_proxy=
+ARG http_proxy=
+ARG ATS_BUILD_PARALLEL=4
+ARG ATS_BUILD_TYPE=opt
+
+ENV https_proxy=$https_proxy \
+    http_proxy=$http_proxy
+
+SHELL ["/bin/bash", "-c"]
+
+# Drop the base image's pinned source and stale build tree so cmake configures
+# fresh: a merged COPY would leave files deleted locally still present, and a
+# reused CMakeCache would pin paths/options from the base image's build.
+RUN rm -rf /home/amanzi_user/amanzi /home/amanzi_user/amanzi_builddir/ats
+
+COPY --chown=amanzi_user:amanzi_user amanzi /home/amanzi_user/amanzi
+
+# amanzi/.git is excluded from the build context (it is 656MB), which leaves
+# amanzi/src/physics/ats/.git as a gitlink file pointing at the now-absent
+# .git/modules/src/physics/ats. ATSVersion.cmake guards on that file merely
+# EXISTing, then runs git and calls exit() -- not a CMake command -- on
+# failure, hard-failing configure. Dropping the dangling gitlink sends it down
+# its static-version branch (ATSVersion.cmake:138) instead. AmanziVersion.cmake
+# already degrades gracefully. Commit provenance comes from build-args below.
+RUN rm -f /home/amanzi_user/amanzi/src/physics/ats/.git
+
+WORKDIR /home/amanzi_user/amanzi
+
+# Mirrors amanzi/Docker/Dockerfile-ATS-build, minus --enable-reg_tests
+# (the regression-test data is excluded from the build context).
+RUN ./bootstrap.sh --prefix=${AMANZI_PREFIX} \
+    --amanzi-build-dir=/home/amanzi_user/amanzi_builddir/ats \
+    --tpl-config-file=${AMANZI_TPLS_DIR}/share/cmake/amanzi-tpl-config.cmake \
+    --parallel=${ATS_BUILD_PARALLEL} \
+    --${ATS_BUILD_TYPE} \
+    --with-mpi=/usr \
+    --enable-shared \
+    --disable-structured \
+    --disable-build_user_guide \
+    --enable-geochemistry \
+    --disable-amanzi_physics \
+    --enable-ats_physics \
+    --enable-elm_ats_api \
+    --ats_dev
+
+ENV https_proxy= \
+    http_proxy=
+
+WORKDIR /home/amanzi_user
+
+
+# ---------------------------------------------------------------------------
+# Resolve to whichever branch REBUILD_ATS selected, then finish the image.
+# ---------------------------------------------------------------------------
+FROM ats-rebuild-${REBUILD_ATS} AS final
+
+# Provenance: recorded from the host's git state by the calling script, since
+# amanzi/.git is excluded from the build context.
+ARG AMANZI_GIT_HASH=unknown
+ARG ATS_GIT_HASH=unknown
+ARG REBUILD_ATS=false
+LABEL org.compass.amanzi-commit=${AMANZI_GIT_HASH} \
+      org.compass.ats-commit=${ATS_GIT_HASH} \
+      org.compass.ats-rebuilt=${REBUILD_ATS}
+
+# fix the Amanzi installation (amanzi#886)
+# Applied here, after the optional rebuild, because a rebuild reinstalls a
+# pristine AmanziImportedTargets.cmake and would drop an earlier edit.
 RUN cd /home/amanzi_user/install/lib \
     && sed -i -e '4a\if (NOT TARGET netcdf)' -e '11i\endif()' AmanziImportedTargets.cmake
 
@@ -45,8 +144,11 @@ RUN mkdir -p work/cases \
     && git config --global user.email "elmats@dev.null" \
     && git config --global user.name "ELM-ATS Developer"
 
-# Copy the full COMPASS-ELM-ATS source tree (including E3SM and inputdata)
-COPY --chown=amanzi_user:amanzi_user . /home/amanzi_user/compass
+# Copy the full COMPASS-ELM-ATS source tree (including E3SM and inputdata).
+# amanzi/ is excluded: only the installed ATS binary is needed at runtime, and
+# the source is now in the build context for the optional rebuild above. This
+# keeps /compass the same size as before that context change.
+COPY --exclude=amanzi --chown=amanzi_user:amanzi_user . /home/amanzi_user/compass
 
 ENV CIMEROOT=/home/amanzi_user/E3SM/cime \
     PYTHONPATH=/home/amanzi_user/E3SM/cime/scripts/Tools:/home/amanzi_user/E3SM/cime/scripts/lib \
@@ -61,4 +163,6 @@ ENV CIMEROOT=/home/amanzi_user/E3SM/cime \
     E3SM_WORK_DIR=/home/amanzi_user/work \
     INPUTDATA_DIR=/home/amanzi_user/compass/inputdata \
     MACHINE_NAME=docker-ats \
-    COMPILER_NAME=gnu
+    COMPILER_NAME=gnu \
+    COMPASS_AMANZI_COMMIT=${AMANZI_GIT_HASH} \
+    COMPASS_ATS_COMMIT=${ATS_GIT_HASH}

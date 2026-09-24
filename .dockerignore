@@ -1,5 +1,21 @@
-# Exclude large submodule content not needed for oakharbor_column builds
-amanzi/
+# Amanzi source is needed in the build context only when REBUILD_ATS=true
+# (see Docker/Dockerfile-ATS-ELM). Rather than excluding amanzi/ wholesale,
+# exclude the bulk that no ATS build needs. This keeps amanzi's contribution to
+# the context at ~180MB instead of 1.2GB while still allowing a rebuild.
+#
+# Only these two are excluded: both were verified not to break the ATS build.
+# Do not add more without testing a REBUILD_ATS=true build -- amanzi/doc was
+# tried and reverted, because `make install` needs
+# doc/input_spec/schema/amanzi.xsd even with --disable-build_user_guide.
+#
+# .git (656MB): both AmanziVersion.cmake and ATSVersion.cmake fall back to
+# static version info when absent. Note the Dockerfiles must also delete the
+# now-dangling amanzi/src/physics/ats/.git gitlink -- see the rebuild stage.
+# Commit provenance is passed via build-args instead.
+amanzi/.git
+# regression test data (400MB): testing/CMakeLists.txt no-ops when the
+# ats-regression-tests dir is absent, and we build without --enable-reg_tests.
+amanzi/src/physics/ats/testing/ats-regression-tests
 
 # Exclude non-Oakharbor inputdata forcing (saves ~4GB)
 inputdata/atm/datm7/1x1pt_*
