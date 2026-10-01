@@ -60,6 +60,11 @@ if [ -z "${COMPSET}" ]; then
     export COMPSET="ICB20TRCNPRDCTCBC"
 fi
 
+# by default, do not increase verbosity
+if [ -z "${ATS_VERBOSITY}" ]; then
+    export ATS_VERBOSITY=0
+fi 
+
 # use ats?
 CASE_SUFFIX=
 if [ -z "${USE_ATS}" ]; then
@@ -156,6 +161,7 @@ if [ "${USE_ATS}" != "FALSE" ]; then
     echo " ats_inputdir = '${CASE_DIR}'" >> user_nl_elm
     echo " ats_inputfile = '${ATS_CASE_NAME}.xml'" >> user_nl_elm
     echo " domain_decomp_type = 'ats'" >> user_nl_elm
+    echo " ats_verbosity = ${ATS_VERBOSITY}" >> user_nl_elm
 fi
 
 

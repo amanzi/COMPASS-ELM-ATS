@@ -22,6 +22,7 @@
 #   --skip-elm              Skip the native ELM (USE_ATS=FALSE) run
 #   --skip-ic-only          Skip the ELM+ATS IC (USE_ATS=IC_ONLY) run
 #   --skip-elm-ats          Skip the full ELM-ATS (USE_ATS=TRUE) run
+#   -v, -vv                 Make log output for cases involving ATS verbose or very verbose
 #
 # The host output directory is mounted into the container at
 # /home/amanzi_user/work (the container's E3SM_WORK_DIR).
@@ -51,6 +52,8 @@ SEQUENTIAL=false
 SKIP_ELM=false
 SKIP_IC_ONLY=false
 SKIP_ELM_ATS=false
+# set verbosity
+ATS_VERBOSITY=0
 
 # Print help/usage information
 show_help() {
@@ -73,6 +76,8 @@ Options:
   --skip-ic-only          Skip the ELM+ATS IC (USE_ATS=IC_ONLY) run
   --skip-elm-ats          Skip the full ELM-ATS (USE_ATS=TRUE) run
   -h, --help              Show this help message and exit
+  -v, --verbose           Make ELM-ATS log output verbose                 
+  -vv, --very-verbose     Make ELM-ATS log output very verbose
 EOF
 }
 
@@ -96,6 +101,8 @@ while [[ $# -gt 0 ]]; do
         --skip-ic-only) SKIP_IC_ONLY=true; shift ;;
         --skip-elm-ats) SKIP_ELM_ATS=true; shift ;;
         -h|--help)    show_help; exit 0 ;;
+        -v|--verbose) ATS_VERBOSITY=1; shift ;;
+        -vv|--very-verbose) ATS_VERBOSITY=2; shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
     done
@@ -258,7 +265,7 @@ for SUFFIX in "${SUFFIXES[@]}"; do
             -e DEBUG_MODE="${DEBUG_VAL}" \
             -v "${OUTPUT_DIR}:${CONTAINER_WORK}" \
             "${IMAGE_NAME}" \
-            bash -c "cd /home/amanzi_user/compass/examples/${EXAMPLE} && ./build_example.sh && cd ${CONTAINER_WORK}/cases/${CASE_NAME}.${SUFFIX} && ./case.submit --no-batch" \
+            bash -c "git config --global --add safe.directory '*' && cd /home/amanzi_user/compass/examples/${EXAMPLE} && ./build_example.sh && cd ${CONTAINER_WORK}/cases/${CASE_NAME}.${SUFFIX} && ./case.submit --no-batch" \
             > "${OUTPUT_DIR}/${SUFFIX}.log" 2>&1
         EXIT_CODES[$SUFFIX]=$?
         set -e
@@ -272,7 +279,7 @@ for SUFFIX in "${SUFFIXES[@]}"; do
             -e DEBUG_MODE="${DEBUG_VAL}" \
             -v "${OUTPUT_DIR}:${CONTAINER_WORK}" \
             "${IMAGE_NAME}" \
-            bash -c "cd /home/amanzi_user/compass/examples/${EXAMPLE} && ./build_example.sh && cd ${CONTAINER_WORK}/cases/${CASE_NAME}.${SUFFIX} && ./case.submit --no-batch" \
+            bash -c "git config --global --add safe.directory '*' && cd /home/amanzi_user/compass/examples/${EXAMPLE} && ./build_example.sh && cd ${CONTAINER_WORK}/cases/${CASE_NAME}.${SUFFIX} && ./case.submit --no-batch" \
             > "${OUTPUT_DIR}/${SUFFIX}.log" 2>&1 &
 
         PIDS[$SUFFIX]=$!
