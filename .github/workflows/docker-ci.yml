@@ -68,9 +68,6 @@ jobs:
     name: ELM-ATS single column (${{ matrix.arch }})
     container:
       image: ${{ secrets.DOCKERHUB_USERNAME }}/compass-elm-ats:latest-${{ matrix.arch }}
-      credentials:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}
     steps:
       - name: run test case
         run: |
@@ -89,9 +86,6 @@ jobs:
     name: ELM only single column (${{ matrix.arch }})
     container:
       image: ${{ secrets.DOCKERHUB_USERNAME }}/compass-elm-ats:latest-${{ matrix.arch }}
-      credentials:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}
     steps:
       - name: run test case
         run: |
@@ -110,9 +104,6 @@ jobs:
     name: Serial transect (${{ matrix.arch }})
     container:
       image: ${{ secrets.DOCKERHUB_USERNAME }}/compass-elm-ats:latest-${{ matrix.arch }}
-      credentials:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}
     steps:
       - name: run test case
         run: |
@@ -131,9 +122,6 @@ jobs:
     name: Parallel transect (${{ matrix.arch }})
     container:
       image: ${{ secrets.DOCKERHUB_USERNAME }}/compass-elm-ats:latest-${{ matrix.arch }}
-      credentials:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}
     steps:
       - name: run test case
         run: |
