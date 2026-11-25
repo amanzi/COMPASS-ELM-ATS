@@ -4,8 +4,7 @@ if [ -z "${USE_ATS}" ]; then
     exit 1
 fi
 
-CASE_NAME=oakharbor_column \
-      INPUTDATA_NAME=1x1pt_Oakharbor \
-      DOMAIN_FILE=domain.lnd.oakharbor_column.nc \
-      SURF_DATA_FILE=surfdata_oakharbor_column.nc \
+EXAMPLE_NAME=oakharbor_column \
+      MET_DATA_BYPASS_DIR=atm_forcing.datm7.GSWP3.0.5d.v2.c180716_Oakharbor-Grid/cpl_bypass_full \
+      COMPSET=ICBELMBC \
       ../build_example.sh

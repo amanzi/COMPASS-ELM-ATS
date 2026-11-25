@@ -1,0 +1,38 @@
+&dynamic_subgrid
+ do_harvest = .false.
+ do_transient_pfts = .false.
+ flanduse_timeseries = ''
+
+&finidat_consistency_checks
+ check_finidat_fsurdat_consistency = .false.
+ check_finidat_year_consistency = .false.
+
+&clm_inparm
+ do_budgets = .true.
+ use_nofire = .true.
+ metdata_type = 'atssubdaily'
+ const_climate_hist = .false.
+ ! forcing is flat/constant (no diurnal cycle, by design for this
+ ! idealized case) -- the default 'zenith' FSDS interpolant assumes each
+ ! forcing period's average already varies with the sun and produces
+ ! large non-physical spikes on flat input; 'linear' just interpolates
+ ! between forcing records with no diurnal reshaping.
+ metdata_fsds_interpolant = 'linear'
+
+ aero_file = '$DIN_LOC_ROOT/atm/cam/chem/trop_mozart_aero/aero/aerosoldep_monthly_1850_mean_1.9x2.5_c090421.nc'
+ CO2_file = '$DIN_LOC_ROOT/atm/datm7/CO2/fco2_datm_1765-2007_c100614.nc'
+
+ nyears_ad_carbon_only = 0
+ spinup_mortality_factor = 10
+
+ ! per-timestep history so we can watch evaporation draw down soil water
+ ! and see the ATS evaporation-downregulation diagnostics (see
+ ! ExternalModelATS.F90's EM_ATS_GetField_ActualEvaporation) reflected
+ ! in the QSOIL/H2OSOI signal over the 20-day diagnostic window without
+ ! 3-hourly averaging smearing out the diurnal cycle
+ hist_fincl2 = 'QSOIL','H2OSOI','ZWT','QOVER','QRUNOFF','TSOI','TBOT','PBOT','RH','RAIN','SNOW','FSDS'
+ hist_nhtfrq(2) = 1
+ hist_mfilt(2) = 960
+
+ stream_fldfilename_popdens = '$DIN_LOC_ROOT/lnd/clm2/firedata/clmforc.Li_2012_hdm_0.5x0.5_AVHRR_simyr1850-2010_c130401.nc'
+ stream_fldfilename_ndep = '$DIN_LOC_ROOT/lnd/clm2/ndepdata/fndep_elm_cbgc_exp_simyr1849-2101_1.9x2.5_c190103.nc'

@@ -165,7 +165,7 @@ def parse_args():
     parser.add_argument(
         "--base-dir",
         required=True,
-        help="Path to E3SM_WORK_DIR (contains output/ subdirectory).",
+        help="Path to E3SM_WORK_DIR (contains the <case-name>/ campaign subdirectory).",
     )
     parser.add_argument(
         "--case-name",
@@ -219,8 +219,8 @@ def load_simulations(base_dir, case_name, hist_file):
     for label, suffix in SIM_SUFFIXES.items():
         pattern = os.path.join(
             base_dir,
-            "output",
-            f"{case_name}.{suffix}",
+            case_name,
+            suffix,
             "run",
             f"{case_name}.{suffix}.elm.{hist_file}.*.nc",
         )
