@@ -2,6 +2,17 @@
 
 # certificates
 *.crt
+*.pem
 
 # simulation output
 output/
+work/
+
+# editor backup/lock files
+*~
+\#*\#
+.#*
+
+# python
+__pycache__/
+.ipynb_checkpoints/
