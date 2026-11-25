@@ -21,8 +21,11 @@
 #
 # The host output directory is mounted into the container at
 # /home/amanzi_user/work (the container's E3SM_WORK_DIR).
-# CIME writes run output to:
-#   <output-dir>/output/<case-name>.{elm,ic_only,elm-ats}/run/
+# CIME writes each case directly under a per-test campaign dir (DOUT_S=FALSE,
+# so there is no separate short-term-archive output/ dir -- run/ lives inside
+# the case dir itself), matching build_example.sh's
+# ${E3SM_WORK_DIR}/${CASE_NAME}/{elm,ic_only,elm-ats}/ convention:
+#   <output-dir>/<case-name>/{elm,ic_only,elm-ats}/run/
 
 set -euo pipefail
 
@@ -114,19 +117,13 @@ echo ""
 # Delete any pre‑existing case or output directories (if requested)
 # ---------------------------------------------------------------------------
 # Directories that may already exist from a previous run:
-#   ${OUTPUT_DIR}/cases/${CASE_NAME}.elm
-#   ${OUTPUT_DIR}/cases/${CASE_NAME}.ic_only
-#   ${OUTPUT_DIR}/cases/${CASE_NAME}.elm-ats
-#   ${OUTPUT_DIR}/output/${CASE_NAME}.elm
-#   ${OUTPUT_DIR}/output/${CASE_NAME}.ic_only
-#   ${OUTPUT_DIR}/output/${CASE_NAME}.elm-ats
+#   ${OUTPUT_DIR}/${CASE_NAME}/elm
+#   ${OUTPUT_DIR}/${CASE_NAME}/ic_only
+#   ${OUTPUT_DIR}/${CASE_NAME}/elm-ats
 DIRS_TO_CHECK=(
-    "${OUTPUT_DIR}/cases/${CASE_NAME}.elm"
-    "${OUTPUT_DIR}/cases/${CASE_NAME}.ic_only"
-    "${OUTPUT_DIR}/cases/${CASE_NAME}.elm-ats"
-    "${OUTPUT_DIR}/output/${CASE_NAME}.elm"
-    "${OUTPUT_DIR}/output/${CASE_NAME}.ic_only"
-    "${OUTPUT_DIR}/output/${CASE_NAME}.elm-ats"
+    "${OUTPUT_DIR}/${CASE_NAME}/elm"
+    "${OUTPUT_DIR}/${CASE_NAME}/ic_only"
+    "${OUTPUT_DIR}/${CASE_NAME}/elm-ats"
 )
 
 for d in "${DIRS_TO_CHECK[@]}"; do
@@ -198,7 +195,7 @@ for SUFFIX in elm ic_only elm-ats; do
         -e DEBUG_MODE="${DEBUG_VAL}" \
         -v "${OUTPUT_DIR}:${CONTAINER_WORK}" \
         "${IMAGE_NAME}" \
-        bash -c "cd /home/amanzi_user/compass/examples/${EXAMPLE} && ./build_example.sh && cd ${CONTAINER_WORK}/cases/${CASE_NAME}.${SUFFIX} && ./case.submit --no-batch" \
+        bash -c "cd /home/amanzi_user/compass/examples/${EXAMPLE} && ./build_example.sh && cd ${CONTAINER_WORK}/${CASE_NAME}/${SUFFIX} && ./case.submit --no-batch" \
         > "${OUTPUT_DIR}/${SUFFIX}.log" 2>&1 &
 
     PIDS[$SUFFIX]=$!
@@ -214,7 +211,7 @@ FAILED=0
 for SUFFIX in elm ic_only elm-ats; do
     if wait "${PIDS[$SUFFIX]}"; then
         # Verify output files exist
-        RUN_DIR="${OUTPUT_DIR}/output/${CASE_NAME}.${SUFFIX}/run"
+        RUN_DIR="${OUTPUT_DIR}/${CASE_NAME}/${SUFFIX}/run"
         if ls "${RUN_DIR}/"*.h0.*.nc 1>/dev/null 2>&1; then
             echo "  ${SUFFIX}: SUCCESS (output verified)"
         else
